@@ -1,112 +1,97 @@
-import React, { useState } from "react";
-
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  Modal,
-  StyleSheet,
-} from "react-native";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert } from 'react-native';
 
 const App = () => {
-  const [task, setTask] = useState("");
-  const [tasks, setTasks] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [editedTaskText, setEditedTaskText] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
+  const [text, setText] = useState('');
+  const [todos, setTodos] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleAddTask = () => {
-    if (task.trim() !== "") {
-      setTasks([...tasks, { id: Date.now(), text: task }]);
-      setTask("");
+  const addTodo = () => {
+    if (text.trim() !== '') {
+      if (editId !== null) {
+        setTodos(todos.map(todo =>
+          todo.id === editId ? { ...todo, text } : todo
+        ));
+        setEditId(null);
+        setIsEditing(false);
+      } else {
+        const newTodo = { id: Math.random().toString(), text: text };
+        setTodos([...todos, newTodo]);
+      }
+      setText('');
+    } else {
+      Alert.alert('Task cannot be empty!');
     }
   };
 
-  const handleEditTask = (id) => {
-    setSelectedTask(id);
-    setEditedTaskText(tasks.find((item) => item.id === id)?.text || "");
-    setModalVisible(true);
+  const startEdit = (id, initialText) => {
+    setEditId(id);
+    setText(initialText);
+    setIsEditing(true);
   };
 
-  const handleEditTaskText = () => {
-    const updatedTasks = tasks.map((item) =>
-      item.id === selectedTask ? { ...item, text: editedTaskText } : item
-    );
-    setTasks(updatedTasks);
-    setModalVisible(false);
+  const cancelEdit = () => {
+    setEditId(null);
+    setText('');
+    setIsEditing(false);
   };
 
-  const handleDeleteTask = (id) => {
-    const updatedTasks = tasks.filter((item) => item.id !== id);
-    setTasks(updatedTasks);
+  const deleteTodo = (id) => {
+    setTodos(todos.filter((todo) => todo.id !== id));
+    if (editId === id) {
+      cancelEdit();
+    }
   };
-
-  const renderTask = ({ item }) => (
-    <View style={styles.taskContainer}>
-      <Text style={styles.taskText}>{item.text}</Text>
-      <TouchableOpacity
-        onPress={() => handleEditTask(item.id)}
-        style={styles.editButton}
-      >
-        <Text style={styles.buttonText}>Edit</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => handleDeleteTask(item.id)}
-        style={styles.deleteButton}
-      >
-        <Text style={styles.buttonText}>Delete</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>ToDo App</Text>
-      <Text style={styles.headers}>By: Christian Go</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter task"
-        value={task}
-        onChangeText={(text) => setTask(text)}
-      />
-      <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
-        <Text style={styles.buttonText}>Add Task</Text>
-      </TouchableOpacity>
+      <Text style={[styles.title, styles.centeredTitle]}>To-Do List</Text>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter task"
+          value={text}
+          onChangeText={(text) => setText(text)}
+        />
+        <TouchableOpacity style={styles.addButton} onPress={addTodo}>
+          <Text style={styles.buttonText}>Add</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
-        data={tasks}
-        renderItem={renderTask}
-        keyExtractor={(item) => item.id.toString()}
-      />
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TextInput
-              style={styles.modalInput}
-              value={editedTaskText}
-              onChangeText={(text) => setEditedTaskText(text)}
-            />
-            <TouchableOpacity
-              onPress={handleEditTaskText}
-              style={styles.modalSaveButton}
-            >
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.modalCancelButton}
-            >
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
+        data={todos}
+        renderItem={({ item }) => (
+          <View style={styles.todoContainer}>
+            <View style={styles.todoTextContainer}>
+              {editId === item.id ? (
+                <TextInput
+                  style={styles.editInput}
+                  value={text}
+                  onChangeText={(text) => setText(text)}
+                />
+              ) : (
+                <Text style={styles.todoText}>{item.text}</Text>
+              )}
+            </View>
+            {!isEditing && editId !== item.id && (
+              <TouchableOpacity style={styles.editButton} onPress={() => startEdit(item.id, item.text)}>
+                <Text style={[styles.buttonText, styles.editButtonText]}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {isEditing && editId === item.id ? (
+              <TouchableOpacity style={styles.editButton} onPress={addTodo}>
+                <Text style={[styles.buttonText, styles.editButtonText]}>Save</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[styles.deleteButton, styles.editButton]} onPress={() => deleteTodo(item.id)}>
+                <Text style={[styles.buttonText, styles.deleteButtonText]}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
-      </Modal>
+        )}
+        keyExtractor={(item) => item.id}
+        style={styles.taskList}
+      />
     </View>
   );
 };
@@ -114,100 +99,90 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "lightblue",
+    backgroundColor: 'lightblue',
+    paddingHorizontal: 20,
+    paddingTop: 50,
   },
-  header: {
-    fontSize: 50,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginTop: 40,
+  title: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: 'black',
+    textAlign: 'center', 
   },
-  headers: {
-    fontSize: 15,
-    fontWeight: "bold",
-    marginBottom: 40,
-    textAlign: "center",
-    marginTop: 10,
+  centeredTitle: {
+    textAlign: 'center',
   },
-  input: {
-    height: 40,
-    borderColor: "black",
-    borderWidth: 2,
-    marginBottom: 30,
-    paddingLeft: 10,
-  },
-  addButton: {
-    backgroundColor: "blue",
-    padding: 10,
-    alignItems: "center",
-    borderRadius: 10,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  taskContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#eee",
+  input: {
+    borderWidth: 1,
+    borderColor: 'black',
     padding: 10,
-    marginBottom: 5,
+    marginRight: 10,
+    flex: 1,
     borderRadius: 5,
   },
-  taskText: {
-    flex: 1,
-  },
-  editButton: {
-    backgroundColor: "green",
-    padding: 5,
-    borderRadius: 3,
-    marginHorizontal: 5,
-  },
-  deleteButton: {
-    backgroundColor: "red",
-    padding: 5,
-    borderRadius: 3,
+  addButton: {
+    backgroundColor: 'black',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   buttonText: {
-    color: "white",
-    fontWeight: "bold",
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    width: 250,
-    padding: 30,
-    borderRadius: 10,
-    elevation: 5,
-    shadowColor: "black",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-  },
-  modalInput: {
-    height: 40,
-    borderColor: "gray",
-    borderWidth: 1,
+  todoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 10,
     marginBottom: 10,
-    paddingLeft: 10,
-    width: "100%",
-  },
-  modalSaveButton: {
-    backgroundColor: "green",
-    padding: 10,
-    alignItems: "center",
     borderRadius: 5,
-    marginTop: 10,
   },
-  modalCancelButton: {
-    backgroundColor: "red",
-    padding: 10,
-    alignItems: "center",
+  todoTextContainer: {
+    flex: 1,
+  },
+  todoText: {
+    fontSize: 18,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: 'black',
+    padding: 8,
+    marginBottom: 10,
+    flex: 1,
     borderRadius: 5,
-    marginTop: 10,
+  },
+  editButton: {
+    backgroundColor: 'black',
+    padding: 8,
+    borderRadius: 5,
+  },
+  deleteButton: {
+    backgroundColor: 'red',
+    padding: 8,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  deleteButtonText: {
+    color: 'red',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  editButtonText: {
+    textAlign: 'center',
+  },
+  taskList: {
+    flex: 1,
   },
 });
 
